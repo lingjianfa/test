@@ -3686,7 +3686,6 @@ struct h2_exception {
    template <typename T, typename M>
    static void check_catch(M m, const char* filine)
    {
-      printf("check_catch , %s:%d \n", __FUNCTION__, __LINE__);
       h2_fail* fail = nullptr;
       if (std::is_same<nothrow, T>::value) {  // no throw check
          if (h2_exception::I().thrown_exception)
@@ -8958,10 +8957,14 @@ h2_inline void h2_suite::enumerate()
 
 h2_inline void h2_suite::test(h2_case* c)
 {
+   bool a1 = false;
    c->prev_setup();
    try {
       test_code(this, c); /* include Setup(); c->post_setup() and c->prev_cleanup(); Cleanup() */
    } catch (...) {
+      a1 = true;
+   }
+   if (a1) {
       if (h2_exception::I().catching) ::longjmp(h2_exception::I().catch_hole, 1);
       else
       c->failing(h2_fail::new_exception("was thrown but uncaught", h2_exception::I().last_type, h2_exception::I().last_bt), true, O.continue_assert);
