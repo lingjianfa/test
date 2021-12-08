@@ -2,8 +2,6 @@
 
 #include "h2unit.h"
 
-#if !defined __MINGW32__
-
 class a_exception : public std::exception
 {
 public:
@@ -29,8 +27,10 @@ SUITE(exception)
 {
   Case(integer) { throw 42; }
 
-  Case(catched) { throw_a_exception(); }
+//   Case(catched) { throw_a_exception(); }
 }
+
+#if !defined _MSC_VER
 
 CASE(exception uncaught)
 {
@@ -65,8 +65,6 @@ SUITE(exception catch)
     }
   }
 
-#if !defined _MSC_VER
-
   Case(check throw type)
   {
     Catch(const char*) { throw_a_integer(42); }
@@ -91,8 +89,6 @@ SUITE(exception catch)
   {
     Catch(a_exception, "hello") { throw_a_exception(); }
   }
-
-#endif
 }
 
 #endif
