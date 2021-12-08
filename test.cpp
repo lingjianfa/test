@@ -25,16 +25,19 @@ throw_a_integer(int a)
 
 SUITE(exception)
 {
-  Case(integer) { throw 42; }
-
-  Case(catched) { throw_a_exception(); }
-
-  Case(std::out_of_range)
+  Case(integer)
   {
-    {
-      std::string().at(1); // generates an std::out_of_range
-    }
+    Catch() { throw 42; }
   }
+
+  //   Case(catched) { throw_a_exception(); }
+
+  //   Case(std::out_of_range)
+  //   {
+  //     {
+  //       std::string().at(1); // generates an std::out_of_range
+  //     }
+  //   }
 }
 
 #if !defined _MSC_VER

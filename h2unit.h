@@ -3686,6 +3686,7 @@ struct h2_exception {
    template <typename T, typename M>
    static void check_catch(M m, const char* filine)
    {
+      printf("check_catch , %s:%d \n", __FUNCTION__, __LINE__);
       h2_fail* fail = nullptr;
       if (std::is_same<nothrow, T>::value) {  // no throw check
          if (h2_exception::I().thrown_exception)
@@ -7841,6 +7842,20 @@ struct h2_exception_handler {
       ::printf("dwExceptionFlags=0x%x\n", dwExceptionFlags);
       ::printf("nNumberOfArguments=%d\n", nNumberOfArguments);
       ::printf("lpArguments=%p\n", lpArguments);
+
+      // The exception flags.
+      // This can be either zero to indicate a continuable exception, or
+      // EXCEPTION_NONCONTINUABLE to indicate a noncontinuable exception.
+
+      // typedef struct _EXCEPTION_RECORD {
+      //    DWORD ExceptionCode;
+      //    DWORD ExceptionFlags;
+      //    struct _EXCEPTION_RECORD* ExceptionRecord;
+      //    PVOID ExceptionAddress;
+      //    DWORD NumberParameters;
+      //    ULONG_PTR ExceptionInformation[EXCEPTION_MAXIMUM_PARAMETERS];
+      // } EXCEPTION_RECORD;
+
       h2_exception::I().last_bt = h2_backtrace::dump(1);
       if (O.exception_as_fail) h2_runner::failing(h2_fail::new_exception("was thrown", "", h2_exception::I().last_bt));
       h2::h2_stub_temporary_restore t((void*)::RaiseException);
@@ -7865,7 +7880,7 @@ h2_inline void h2_exception::initialize()
 {
    static h2_list stubs;
 #if defined _MSC_VER || defined __MINGW32__ || defined __MINGW64__
-   h2_stubs::add(stubs, (void*)::RaiseException, (void*)h2_exception_handler::RaiseException, "RaiseException", H2_FILINE);
+   // h2_stubs::add(stubs, (void*)::RaiseException, (void*)h2_exception_handler::RaiseException, "RaiseException", H2_FILINE);
 #else
    h2_stubs::add(stubs, (void*)abi::__cxa_throw, (void*)h2_exception_handler::__cxa_throw, "__cxa_throw", H2_FILINE);
 #endif
@@ -8947,6 +8962,8 @@ h2_inline void h2_suite::test(h2_case* c)
    try {
       test_code(this, c); /* include Setup(); c->post_setup() and c->prev_cleanup(); Cleanup() */
    } catch (...) {
+      if (h2_exception::I().catching) ::longjmp(h2_exception::I().catch_hole, 1);
+      else
       c->failing(h2_fail::new_exception("was thrown but uncaught", h2_exception::I().last_type, h2_exception::I().last_bt), true, O.continue_assert);
    }
    c->post_cleanup();
