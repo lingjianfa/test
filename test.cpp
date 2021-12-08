@@ -27,7 +27,7 @@ SUITE(exception)
 {
   Case(integer) { throw 42; }
 
-//   Case(catched) { throw_a_exception(); }
+  Case(catched) { throw_a_exception(); }
 }
 
 #if !defined _MSC_VER
