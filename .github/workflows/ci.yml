@@ -10,15 +10,9 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - uses: ilammy/msvc-dev-cmd@v1
-      - name: environment
-        run: env
-      - name: pre-defined preprocessor macros
-        run: |
-          echo '' > empty.cpp
-          cl /EP /Zc:preprocessor /PD empty.cpp
       - name: configure 
         run: cmake .
       - name: build 
-        run: make
-      - name: 🔨 run print/release
+        run: cmake --build .
+      - name: 🔨 run print
         run: ./a.out.exe
