@@ -5,7 +5,7 @@
 #ifndef __H2UNIT_H__
 #define __H2UNIT_H__
 #define H2UNIT_VERSION 5.16
-#define H2UNIT_REVISION 2021-12-08 branches/m7
+#define H2UNIT_REVISION 2021-12-08 branches/v5
 #ifndef __H2_UNIT_HPP__
 #define __H2_UNIT_HPP__
 
@@ -7837,6 +7837,10 @@ struct h2_exception_handler {
 #if defined _MSC_VER || defined __MINGW32__ || defined __MINGW64__
    static void RaiseException(DWORD dwExceptionCode, DWORD dwExceptionFlags, DWORD nNumberOfArguments, const ULONG_PTR* lpArguments)
    {
+      ::printf("dwExceptionCode=0x%x\n", dwExceptionCode);
+      ::printf("dwExceptionFlags=0x%x\n", dwExceptionFlags);
+      ::printf("nNumberOfArguments=%d\n", nNumberOfArguments);
+      ::printf("lpArguments=%p\n", lpArguments);
       h2_exception::I().last_bt = h2_backtrace::dump(1);
       if (O.exception_as_fail) h2_runner::failing(h2_fail::new_exception("was thrown", "", h2_exception::I().last_bt));
       h2::h2_stub_temporary_restore t((void*)::RaiseException);
