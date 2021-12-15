@@ -2,6 +2,7 @@
 
 #include "h2unit.h"
 
+char buffer[1024];
 
 class A_AbstractClass {
  public:
