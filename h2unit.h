@@ -9181,7 +9181,9 @@ h2_inline int h2_runner::main(int argc, const char** argv)
 
 h2_inline void h2_runner::stub(void* srcfp, void* dstfp, const char* srcfn, const char* filine)
 {
-   if (!srcfp || !dstfp) return;
+   if (!srcfp || !dstfp){ 
+   ::printf("%p, %p \n", srcfp, dstfp);
+   return;}
    if (h2_runner::I().current_case)
       h2_stubs::add(h2_runner::I().current_case->stubs, srcfp, dstfp, srcfn, filine);
    else if (h2_runner::I().current_suite)
