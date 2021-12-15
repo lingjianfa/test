@@ -130,14 +130,20 @@ static std::pair<const char*, double> G_virtual_f2_fake(G_TemplateClass<int, int
 
 static const char* static_f2(int a, int b) { return sprintf(buffer, "static_f2(%d, %d)", a, b), buffer; }
 
-SUITE(mock member function)
+SUITE(mock)
 {
    B_DerivedClass b;
 
+   Case()
+   {
+      STUBS(static_f2, const char*, (int a, int b)) { return "+static_f2"; };
+      OK("+static_f2", static_f2(1, 2));
+   }
+
    Case(static function)
    {
-      MOCK(static_f2, const char*(int a, int b)).Once(1, 2).Return("+B.static_f2");
-      OK("+B.static_f2", static_f2(1, 2));
+      MOCK(static_f2, const char*(int a, int b)).Once(1, 2).Return("+static_f2");
+      OK("+static_f2", static_f2(1, 2));
    }
 
    Case(static member function)
