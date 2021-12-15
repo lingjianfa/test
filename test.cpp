@@ -128,13 +128,22 @@ static const char* G_normal_f2_fake(G_TemplateClass<int, int>* This, int x, int 
 static std::pair<const char*, double> G_virtual_f2_fake(G_TemplateClass<int, int>* This, int x, int y) { return std::make_pair("-G.virtual_f2", x * 10 + y + This->G / 10.0); }
 
 
+static const char* static_f1(int a, int b) { return sprintf(buffer, "static_f1(%d, %d)", a, b), buffer; }
+static const char* static_fake(int a, int b) { return "+static_f1"; }
+
 static const char* static_f2(int a, int b) { return sprintf(buffer, "static_f2(%d, %d)", a, b), buffer; }
 
 SUITE(mock)
 {
    B_DerivedClass b;
 
-   Case()
+   Case(2)
+   {
+      STUB(static_f1, static_fake);
+      OK("+static_f1", static_f1(1, 2));
+   }
+
+   Case(2)
    {
       STUBS(static_f2, const char*, (int a, int b)) { return "+static_f2"; };
       OK("+static_f2", static_f2(1, 2));
