@@ -1773,6 +1773,8 @@ struct h2_equation<E, typename std::enable_if<std::is_arithmetic<E>::value>::typ
    }
    virtual h2_line expection(const C& c) const override
    {
+       std::cout<<"fuck:" << h2::h2_cxa::type_name<decltype(e)>() << std::endl;
+
       h2_line t = h2_stringify(e);
       if (epsilon != 0) {
          if (h2::h2_approximate::is_scale(epsilon))  // percentage/scale
