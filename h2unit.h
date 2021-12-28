@@ -866,7 +866,12 @@ struct h2_stringify_impl<T, typename std::enable_if<h2_is_ostreamable<T>::value>
    template <typename U>
    static auto ostream_print(const U& a, bool) -> typename std::enable_if<std::is_arithmetic<U>::value, h2_line>::type
    {
-      auto str = std::to_string(a);
+      //auto str = std::to_string(a);
+
+      h2_ostringstream oss;
+      oss << a;
+auto str = oss.str() ;
+
       if (str.find_first_of('.') != std::string::npos) {
          str.erase(str.find_last_not_of("0") + 1);
          str.erase(str.find_last_not_of(".") + 1);
