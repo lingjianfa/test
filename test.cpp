@@ -5,8 +5,12 @@
 
 CASE(malloc faulty injection successful [pass])
 {
-   BLOCK(limit = 10 /* in the block , available memory only 10 bytes */)
+   BLOCK(limit = 10)
    {
-      OK(NULL, malloc(11)); /* no enough available memory */
+      auto a1 = malloc(11);
+
+      std::cout << h2::h2_cxa::type_name<decltype(a1)>() << std::endl;
+
+      OK(NULL, a1);
    }
 }
