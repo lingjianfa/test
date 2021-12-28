@@ -7,7 +7,7 @@ CASE(malloc faulty injection successful [pass])
 {
    BLOCK(limit = 10)
    {
-      auto a1 = malloc(11);
+      auto a1 = (char*)malloc(11);
 
       std::cout << h2::h2_cxa::type_name<decltype(a1)>() << std::endl;
 
