@@ -5,16 +5,15 @@
 
 CASE(malloc faulty injection successful [pass])
 {
-   // BLOCK(limit = 10)
-   // {
-   //    auto a1 = (char*)malloc(11);
+   BLOCK(limit = 10)
+   {
+      auto a1 = (char*)malloc(11);
 
-   //    std::cout << h2::h2_cxa::type_name<decltype(a1)>() << std::endl;
+      std::cout << h2::h2_cxa::type_name<decltype(a1)>() << std::endl;
 
-   //    OK(NULL, a1);
-   // }
+      OK(NULL, a1);
+   }
 
-   // h2::h2_stringify
 }
 
 SUITE()

@@ -3791,7 +3791,7 @@ template <typename E, typename A>
 static inline h2_ostringstream& h2_ok2(h2_assert* d, E e, const A& a, std::false_type, int)
 {
    auto m = h2_matcher_cast<typename h2_decay<A>::type>((typename h2_decay<E>::type)e);
-   return d->stash(m.matches(a, {}), d->oppose ? "KO2" : "OK2", m.expection({}), h2_stringify(a, true));
+   return d->stash(m.matches(a, {}), d->oppose ? "KO2" : "OK2", m.expection({}), "");
 }
 
 template <typename E, typename A>
