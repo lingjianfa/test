@@ -39,7 +39,7 @@ jobs:
     - name: What OS is running
       run: uname -a
     - name: install cmake
-      run: sudo apt install cmake
+      run: apt install cmake
     - name: gcc version
       run: g++ --version
     - name: Build test
@@ -58,6 +58,6 @@ jobs:
     - name: make version
       run: make --version
     - name: gcc version
-      run: g++ --version
+      run: clang++ --version
     - name: Build test
-      run: g++ -std=c++14 test.cpp && ./a.out
+      run: clang++ -std=c++14 test.cpp && ./a.out
