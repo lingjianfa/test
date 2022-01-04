@@ -16,7 +16,7 @@ jobs:
       run: g++ -std=c++14 test.cpp && ./a.out
 
   gcc:
-    runs-on: ubuntu-latest
+    runs-on: macos-latest
     container:
       image: gcc
     steps:  
@@ -48,7 +48,7 @@ jobs:
       run: cmake . && make && ./a.out
 
   clang:
-    runs-on: ubuntu-latest
+    runs-on: macos-latest
     container:
       image: silkeh/clang:11
     env:
