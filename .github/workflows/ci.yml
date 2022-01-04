@@ -7,10 +7,10 @@ jobs:
   atest:
     runs-on: ubuntu-latest
     container:
-      image: azul/zulu-openjdk-alpine:8-jre
+      image: alpine
     steps:  
     - uses: actions/checkout@v2
     - name: What OS is running
       run: uname -a
-    - name: What java version do we have
-      run: java -version
+    - name: Build test
+      run: cmake . 
