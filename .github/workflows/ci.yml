@@ -54,11 +54,20 @@ jobs:
       matrix:
         include:
           # https://hub.docker.com/_/gcc
+          - {image: "gcc", ver: "5", cc: 'gcc', cxx: 'g++'}
+          - {image: "gcc", ver: "6", cc: 'gcc', cxx: 'g++'}
+          - {image: "gcc", ver: "7", cc: 'gcc', cxx: 'g++'}
           - {image: "gcc", ver: "8", cc: 'gcc', cxx: 'g++'}
           - {image: "gcc", ver: "9", cc: 'gcc', cxx: 'g++'}
           - {image: "gcc", ver: "10", cc: 'gcc', cxx: 'g++'}
           - {image: "gcc", ver: "11", cc: 'gcc', cxx: 'g++'}
           # https://hub.docker.com/r/silkeh/clang
+          - {image: "silkeh/clang", ver: "3.9", cc: 'clang', cxx: 'clang++'}
+          - {image: "silkeh/clang", ver: "4", cc: 'clang', cxx: 'clang++'}
+          - {image: "silkeh/clang", ver: "5", cc: 'clang', cxx: 'clang++'}
+          - {image: "silkeh/clang", ver: "6", cc: 'clang', cxx: 'clang++'}
+          - {image: "silkeh/clang", ver: "7", cc: 'clang', cxx: 'clang++'}
+          - {image: "silkeh/clang", ver: "8", cc: 'clang', cxx: 'clang++'}
           - {image: "silkeh/clang", ver: "9", cc: 'clang', cxx: 'clang++'}
           - {image: "silkeh/clang", ver: "10", cc: 'clang', cxx: 'clang++'}
           - {image: "silkeh/clang", ver: "11", cc: 'clang', cxx: 'clang++'}

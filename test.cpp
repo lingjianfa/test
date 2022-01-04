@@ -6,6 +6,7 @@ SUITE(a)
 {
    Case(ab)
    {
+      printf("Hello Docker\n");
       OK(1, 2);
    }
 }
