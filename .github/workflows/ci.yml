@@ -13,4 +13,4 @@ jobs:
     - name: What OS is running
       run: uname -a
     - name: Build test
-      run: cmake . 
+      run: cd starter && make
