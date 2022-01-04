@@ -70,4 +70,4 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - name: Build test
-      run: g++ -std=c++14 test.cpp && ./a.out
+      run: ${{matrix.cxx}} -std=c++14 test.cpp && ./a.out
