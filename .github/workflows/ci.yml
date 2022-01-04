@@ -27,3 +27,16 @@ jobs:
       run: g++ --version
     - name: Build test
       run: g++ test.cpp && ./a.out
+
+  gcc85:
+    runs-on: ubuntu-latest
+    container:
+      image: gcc:8.5
+    steps:  
+    - uses: actions/checkout@v2
+    - name: What OS is running
+      run: uname -a
+    - name: gcc version
+      run: g++ --version
+    - name: Build test
+      run: g++ test.cpp && ./a.out
