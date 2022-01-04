@@ -1,10 +1,11 @@
+#define H2UNIT_IMPORT_MAIN
 
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
+#include "h2unit.h"
 
-int main(int argc, char **argv)
+SUITE(a)
 {
-   printf("Hello Docker!\n");
-   return 0;
+   Case(ab)
+   {
+      OK(1, 2);
+   }
 }

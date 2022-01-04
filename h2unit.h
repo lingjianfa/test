@@ -5,7 +5,8 @@
 #ifndef __H2UNIT_H__
 #define __H2UNIT_H__
 #define H2UNIT_VERSION 5.17
-#define H2UNIT_REVISION 2021-12-28 branches/m4
+#define H2UNIT_DATE 2022-01-02
+#define H2UNIT_REVISION branches/v5/9b29b4d30ff8a25bf1c579e0b260ac68e123ef78
 #ifndef __H2_UNIT_HPP__
 #define __H2_UNIT_HPP__
 
@@ -23,6 +24,11 @@
 #include <functional>  /* std::function */
 #include <utility>     /* std::forward, std::pair */
 #include <type_traits> /* std::true_type */
+
+#if defined _MSC_VER || defined __CYGWIN__
+#include <iomanip> /* std::fixed, std::setprecision */
+#include <limits>  /* std::numeric_limits */
+#endif
 
 #if defined _MSC_VER
 #include <malloc.h> /* _alloca _msize _expand */
@@ -632,7 +638,7 @@ static inline const char* quote_if(bool a, const char* t = "\"", const char* f =
 
 /* clang-format off */
 #define h2_singleton(Class) static Class& I() { static Class i; return i; }
-#define h2_array_append(Array, a) for (size_t i = 0; i < sizeof(Array) / sizeof(Array)[0] - 1; ++i) if (!(Array)[i]) { (Array)[i] = (a); break; }
+#define h2_array_append(Array, a) do { for (size_t i = 0; i < sizeof(Array) / sizeof(Array)[0] - 1; ++i) if (!(Array)[i]) { (Array)[i] = (a); break; } } while (0)
 // source/utils/h2_libc.hpp
 struct h2_libc {
    static void* malloc(size_t size);
@@ -853,38 +859,39 @@ struct h2_stringify_impl<T, typename std::enable_if<h2::h2_tostring_able<T>::val
 };
 
 template <typename T>
-struct h2_is_ostreamable {
+struct h2_is_streamable {  // exclude number
    template <typename U> static auto test(U* u) -> decltype(std::declval<std::ostream&>() << *u, std::true_type());
    template <typename U> static auto test(...) -> std::false_type;
-   static constexpr bool value = decltype(test<T>(nullptr))::value;
+   static constexpr bool value = decltype(test<T>(nullptr))::value && !std::is_arithmetic<T>::value;
 };
 
 template <typename T>
-struct h2_stringify_impl<T, typename std::enable_if<h2_is_ostreamable<T>::value>::type> {
-   static h2_line print(const T& a, bool represent = false) { return ostream_print(a, represent); }
-
-   template <typename U>
-   static auto ostream_print(const U& a, bool) -> typename std::enable_if<std::is_arithmetic<U>::value, h2_line>::type
+struct h2_stringify_impl<T, typename std::enable_if<h2_is_streamable<T>::value>::type> {
+   static h2_line print(const T& a, bool represent = false)
    {
-      //auto str = std::to_string(a);
-
       h2_ostringstream oss;
       oss << a;
-auto str = oss.str() ;
+      represent = represent && std::is_convertible<T, h2_string>::value;
+      return gray(quote_if(represent)) + oss.str().c_str() + gray(quote_if(represent));
+   }
+};
 
+template <typename T>
+struct h2_stringify_impl<T, typename std::enable_if<std::is_arithmetic<T>::value>::type> {
+   static h2_line print(const T& a, bool = false)
+   {
+#if defined _MSC_VER || defined __CYGWIN__  // std::to_string issue
+      h2_ostringstream oss;
+      oss << std::fixed << std::setprecision(std::numeric_limits<T>::digits10 + 1) << a;
+      auto str = oss.str();
+#else
+      auto str = std::to_string(a);
+#endif
       if (str.find_first_of('.') != std::string::npos) {
          str.erase(str.find_last_not_of("0") + 1);
          str.erase(str.find_last_not_of(".") + 1);
       }
-      return {str.c_str()};
-   }
-
-   template <typename U>
-   static auto ostream_print(const U& a, bool represent) -> typename std::enable_if<!std::is_arithmetic<U>::value, h2_line>::type
-   {
-      h2_ostringstream oss;
-      oss << a;
-      return gray(quote_if(represent && std::is_convertible<U, h2_string>::value)) + oss.str().c_str() + gray(quote_if(represent && std::is_convertible<U, h2_string>::value));
+      return str.c_str();
    }
 };
 
@@ -1065,6 +1072,7 @@ struct h2_cxa {
 struct h2_fail : h2_libc {
    h2_fail *subling_next = nullptr, *child_next = nullptr;
 
+   bool warning = false;
    const char* assert_type = "In";  // In(Mock, AllOf, &&, ||)
    const char* assert_op = ",";
    h2_string e_expression, a_expression;
@@ -1102,12 +1110,12 @@ struct h2_fail : h2_libc {
    static h2_fail* new_asymmetric_free(const void* ptr, const char* who_allocate, const char* who_release, const h2_backtrace& bt_allocate, const h2_backtrace& bt_release);
    static h2_fail* new_overflow(const void* ptr, const size_t size, const void* violate_ptr, const char* action, const h2_vector<unsigned char>& spot, const h2_backtrace& bt_allocate, const h2_backtrace& bt_trample);
    static h2_fail* new_use_after_free(const void* ptr, const void* violate_ptr, const char* action, const h2_backtrace& bt_allocate, const h2_backtrace& bt_release, const h2_backtrace& bt_use);
-   static h2_fail* new_exception(const h2_line& explain, const char* type, const h2_backtrace& bt_throw, const char* filine = nullptr);
+   static h2_fail* new_exception(const h2_line& explain, const char* type, const h2_backtrace& bt_throw, bool as_warning, const char* filine = nullptr);
    static h2_fail* new_symbol(const h2_string& symbol, const h2_vector<h2_string>& candidates, const h2_line& explain = {});
 };
 // source/option/h2_option.hpp
-
-static constexpr int VerboseQuiet = 0, VerboseCompactFailed = 1, VerboseCompactPassed = 2, VerboseNormal = 3, VerboseDetail = 4;
+static constexpr int OsLinux = 0x11, OsMacOS = 0x12, OsWindows = 0x20;
+static constexpr int VerboseQuiet = 0, VerboseCompactFailed = 1, VerboseCompactWarning = 2, VerboseCompactPassed = 3, VerboseNormal = 4, VerboseDetail = 5;
 static constexpr int ShuffleCode = 0x0, ShuffleRandom = 0x10, ShuffleName = 0x100, ShuffleFile = 0x1000, ShuffleReverse = 0x10000;
 static constexpr int ListNone = 0x0, ListSuite = 0x10, ListCase = 0x100, ListTodo = 0x1000, ListTags = 0x10000;
 static constexpr int FoldUnFold = 0, FoldShort = 1, FoldSame = 2, FoldSingle = 3, FoldMax = 5;
@@ -1116,11 +1124,11 @@ struct h2_option {
    h2_singleton(h2_option);
 
 #if defined __linux
-   static constexpr char os = 'L';
+   static constexpr int os = OsLinux;
 #elif defined __APPLE__
-   static constexpr char os = 'm';
+   static constexpr int os = OsMacOS;
 #elif defined _WIN32 || defined __CYGWIN__  // +MinGW
-   static constexpr char os = 'W';
+   static constexpr int os = OsWindows;
 #endif
 
    char args[256];
@@ -1130,10 +1138,14 @@ struct h2_option {
    bool only_last_failed = false;
    bool memory_check = true;
    bool continue_assert = false;
-   bool exception_as_fail = false;
    bool debugger_trap = false;
-   bool quit_exit_code = false;
-   bool tags_filter = false;
+   bool exit_with_fails = false;
+   bool as_waring_exception = false;
+   bool as_waring_uncaught = false;
+   bool as_waring_memory_leak = false;
+   bool as_waring_memory_violate = false;
+   bool as_waring_memory_double_free = false;
+   bool as_waring_memory_asymmetric_free = false;
    int break_after_fails = 0;
    int run_rounds = 1;
    int fold_json = FoldMax;
@@ -1143,6 +1155,10 @@ struct h2_option {
    const char* json_source_quote = "";
    char junit_path[256]{'\0'};
    const char *includes[128]{nullptr}, *excludes[128]{nullptr};
+   const char *file_includes[128]{nullptr}, *file_excludes[128]{nullptr};
+   const char *suite_includes[128]{nullptr}, *suite_excludes[128]{nullptr};
+   const char *case_includes[128]{nullptr}, *case_excludes[128]{nullptr};
+   const char *tags_includes[128]{nullptr}, *tags_excludes[128]{nullptr};
 
    void parse(int argc, const char** argv);
 };
@@ -1150,11 +1166,11 @@ struct h2_option {
 static const h2_option& O = h2_option::I();  // for pretty
 // source/core/h2_test.hpp
 struct h2_stats {
-   int passed = 0, failed = 0, todo = 0, filtered = 0, ignored = 0;
+   int passed = 0, failed = 0, warning = 0, todo = 0, filtered = 0, ignored = 0;
    int asserts = 0;
    long long footprint = 0;
    long long timecost = 0;
-   void clear() { passed = 0, failed = 0, todo = 0, filtered = 0, ignored = 0, asserts = 0, footprint = 0, timecost = 0; }
+   void clear() { passed = failed = warning = todo = filtered = ignored = 0, asserts = 0, footprint = 0, timecost = 0; }
 };
 
 struct h2_test {
@@ -1182,7 +1198,7 @@ struct h2_test {
 // source/core/h2_case.hpp
 struct h2_case : h2_test {
    bool todo = false;
-   bool ignored = false, failed = false, last_failed = false;
+   bool ignored = false, failed = false, last_failed = false, warning = false;
    jmp_buf fail_hole;
    h2_fail* fails = nullptr;
 
@@ -1778,8 +1794,6 @@ struct h2_equation<E, typename std::enable_if<std::is_arithmetic<E>::value>::typ
    }
    virtual h2_line expection(const C& c) const override
    {
-       std::cout<<"fuck:" << h2::h2_cxa::type_name<decltype(e)>() << std::endl;
-
       h2_line t = h2_stringify(e);
       if (epsilon != 0) {
          if (h2::h2_approximate::is_scale(epsilon))  // percentage/scale
@@ -3669,18 +3683,18 @@ struct h2_exception {
       h2_fail* fail = nullptr;
       if (std::is_same<nothrow, T>::value) {  // no throw check
          if (h2_exception::I().thrown_exception)
-            fail = h2_fail::new_exception("was thrown but expect no throw", h2_exception::I().last_type, h2_exception::I().last_bt, filine);
+            fail = h2_fail::new_exception("was thrown but expect no throw", h2_exception::I().last_type, h2_exception::I().last_bt, false, filine);
       } else {
          if (!h2_exception::I().thrown_exception) {
             fail = h2_fail::new_normal("expect exception " + color(h2_cxa::demangle(typeid(T).name()), "green") + " thrown but not", filine);
          } else {
             if (!(typeid(T) == *h2_exception::I().type_info)) {  // check type
-               fail = h2_fail::new_exception("was thrown but expect type is " + color(h2_cxa::demangle(typeid(T).name()), "green"), h2_exception::I().last_type, h2_exception::I().last_bt, filine);
+               fail = h2_fail::new_exception("was thrown but expect type is " + color(h2_cxa::demangle(typeid(T).name()), "green"), h2_exception::I().last_type, h2_exception::I().last_bt, false, filine);
             } else {  // check value
                fail = matches((T*)h2_exception::I().thrown_exception, m);
                if (fail) {
                   fail->filine = filine;
-                  h2_fail::append_child(fail, h2_fail::new_exception("was thrown", h2_exception::I().last_type, h2_exception::I().last_bt, filine));
+                  h2_fail::append_child(fail, h2_fail::new_exception("was thrown", h2_exception::I().last_type, h2_exception::I().last_bt, false, filine));
                }
             }
          }
@@ -3779,6 +3793,17 @@ struct h2_sock : h2_once {
 #define Ptx(...) h2::h2_sock::check(H2_FILINE, h2::ss(#__VA_ARGS__), __VA_ARGS__)
 #define Pij(Packet_, Size_, ...) h2::h2_sock::inject(Packet_, Size_, h2::ss(#__VA_ARGS__))
 // source/assert/h2_assert.hpp
+struct h2_warning {
+   h2_singleton(h2_warning);
+   bool warning = false;
+   bool swap(bool new_warning)
+   {
+      bool old_warning = I().warning;
+      I().warning = new_warning;
+      return old_warning;
+   }
+};
+
 struct h2_assert : h2_once {
    bool oppose;
    h2_fail* fails = nullptr;
@@ -3798,7 +3823,7 @@ template <typename E, typename A>
 static inline h2_ostringstream& h2_ok2(h2_assert* d, E e, const A& a, std::false_type, int)
 {
    auto m = h2_matcher_cast<typename h2_decay<A>::type>((typename h2_decay<E>::type)e);
-   return d->stash(m.matches(a, {}), d->oppose ? "KO2" : "OK2", m.expection({}), "");
+   return d->stash(m.matches(a, {}), d->oppose ? "KO2" : "OK2", m.expection({}), h2_stringify(a, true));
 }
 
 template <typename E, typename A>
@@ -3871,6 +3896,8 @@ static inline h2_ostringstream& h2_ok1(h2_assert* d, h2_1cp<A> c1)
    for (h2::h2_assert Q(false); Q; Q.failing(#expect, #actual, H2_FILINE)) h2::h2_je(&Q, expect, actual, "")
 #define H2JE_4(Q, expect, actual, selector) \
    for (h2::h2_assert Q(false); Q; Q.failing(#expect, #actual, H2_FILINE)) h2::h2_je(&Q, expect, actual, selector)
+
+#define H2Warning if (!h2::h2_warning::I().swap(true))
 // source/assert/h2_timer.hpp
 struct h2_timer : h2_once {
    const char* filine;
@@ -3926,6 +3953,10 @@ struct h2_timer : h2_once {
 
 #ifndef H2_NO_JE
 #define JE H2JE
+#endif
+
+#ifndef H2_NO_Warning
+#define Warning H2Warning
 #endif
 
 #ifndef H2_NO_MOCK
@@ -4480,6 +4511,13 @@ static inline unsigned mask2n(unsigned x)
    x |= (x >> 8);
    x |= (x >> 16);
    return x;
+}
+
+static inline char* strcpyn(char* dst, const char* src, size_t len)
+{
+   strncpy(dst, src, len);
+   dst[len] = '\0';
+   return dst;
 }
 
 static inline const char* strip_left(const char* left, const char* right = nullptr)  // [left, right)
@@ -5597,7 +5635,7 @@ static inline char* addr2line(unsigned long long addr)
       ::pclose(f);
    }
    if (!ret) return nullptr;
-   if (O.os == 'm' ? !memcmp(buf, "0x", 2) : !!strstr(buf, "??:")) return nullptr;
+   if (O.os == OsMacOS ? !memcmp(buf, "0x", 2) : !!strstr(buf, "??:")) return nullptr;
    *(char*)strip_right(buf) = '\0';
 #endif
    return buf;
@@ -5714,7 +5752,7 @@ h2_inline void h2_backtrace::print(h2_vector<h2_string>& stacks) const
    for (int i = shift; i < count; ++i) {
       char *p = nullptr, mangle_name[1024] = "", demangle_name[1024] = "";
       backtrace_extract(symbols[i], mangle_name);
-      if (O.verbose >= VerboseDetail || O.os != 'm') p = addr2line(h2_load::ptr_to_addr(frames[i])); /* atos is slow */
+      if (O.verbose >= VerboseDetail || O.os != OsMacOS) p = addr2line(h2_load::ptr_to_addr(frames[i])); /* atos is slow */
       if (!p) p = h2_cxa::demangle(mangle_name, demangle_name);
       if (!p || !strlen(p)) {
          p = symbols[i];
@@ -6966,7 +7004,7 @@ struct h2_piece : h2_libc {
       page_count = (size_t)::ceil(user_size_plus / (double)page_size);
 
 #if defined _WIN32
-      page_ptr = (unsigned char*)VirtualAlloc(NULL, page_size * (page_count + 1), MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
+      page_ptr = (unsigned char*)VirtualAlloc(NULL, page_size * (page_count + 1), MEM_COMMIT, PAGE_READWRITE);
       if (page_ptr == NULL) h2_console::prints("yellow", "VirtualAlloc failed at %s:%d\n", __FILE__, __LINE__), abort();
 #else
       page_ptr = (unsigned char*)::mmap(nullptr, page_size * (page_count + 1), PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
@@ -6981,7 +7019,7 @@ struct h2_piece : h2_libc {
    ~h2_piece()
    {
 #if defined _WIN32
-      VirtualFree(page_ptr, 0, MEM_DECOMMIT | MEM_RELEASE);
+      VirtualFree(page_ptr, 0, MEM_RELEASE);
 #else
       ::munmap(page_ptr, page_size * (page_count + 1));
 #endif
@@ -7071,6 +7109,7 @@ struct h2_piece : h2_libc {
       h2_fail* fail = nullptr;
       fail = check_snowfield(user_ptr + user_size, page_ptr + page_size * page_count);
       if (!fail) fail = check_snowfield(page_ptr, user_ptr);
+      if (fail && O.as_waring_memory_violate) fail->warning = true;
       return fail;
    }
 
@@ -7089,7 +7128,9 @@ struct h2_piece : h2_libc {
       if (h2_in(who_allocate, 4, "new", "new nothrow", "new[]", "new[] nothrow") && h2_in(who_release, 4, "delete", "delete nothrow", "delete[]", "delete[] nothrow")) return nullptr;
 
       if (bt_allocate.in(h2_exempt::I().fps)) return nullptr;
-      return h2_fail::new_asymmetric_free(user_ptr, who_allocate, who_release, bt_allocate, bt_release);
+      auto fail = h2_fail::new_asymmetric_free(user_ptr, who_allocate, who_release, bt_allocate, bt_release);
+      if (O.as_waring_memory_asymmetric_free) fail->warning = true;
+      return fail;
    }
 
    h2_fail* check_double_free(h2_backtrace& bt)
@@ -7098,7 +7139,9 @@ struct h2_piece : h2_libc {
          bt_release = bt;
          return nullptr;
       }
-      return h2_fail::new_double_free(user_ptr, bt_allocate, bt_release, bt);
+      auto fail = h2_fail::new_double_free(user_ptr, bt_allocate, bt_release, bt);
+      if (O.as_waring_memory_double_free) fail->warning = true;
+      return fail;
    }
 
    h2_fail* free(const char* who_release)
@@ -7218,16 +7261,20 @@ struct h2_block : h2_libc {
          if (p->violate_times)
             h2_fail::append_subling(fails, p->violate_fail());
 
-      if (fails) return fails;
-
+      if (fails) {
+         if (O.as_waring_memory_violate) fails->warning = true;
+         return fails;
+      }
       h2_leaky leaky;
       h2_list_for_each_entry (p, pieces, h2_piece, x)
          if (!attributes.noleak && !p->free_times)
             leaky.add(p->user_ptr, p->user_size, p->bt_allocate);
 
       fails = leaky.check(where, filine);
-      if (fails) return fails;
-
+      if (fails) {
+         if (O.as_waring_memory_leak) fails->warning = true;
+         return fails;
+      }
       /* why not chain fails in subling? report one fail ignore more for clean.
          when fail, memory may be in used, don't free and keep it for robust */
       h2_list_for_each_entry (p, pieces, h2_piece, x) {
@@ -7321,7 +7368,7 @@ struct h2_stack {
          h2_piece* piece = p->get_piece(ptr);
          if (piece) return p->rel_piece(who, piece);
       }
-      if (!at_exit && O.os != 'W')
+      if (!at_exit && O.os != OsWindows)
          if (!h2_backtrace::dump(1).in(h2_exempt::I().fps))
             h2_debug(2, "Warning: %s %p not found!", who, ptr);
       return nullptr;
@@ -7377,7 +7424,7 @@ struct h2_override {
    static void* realloc(void* ptr, size_t size)
    {
       h2_piece *old_p = nullptr, *new_p = nullptr;
-      if (size == 0 && O.os == 'm') size = 1;
+      if (size == 0 && O.os == OsMacOS) size = 1;
       if (ptr) old_p = h2_stack::I().get_piece(ptr);
       if (size) new_p = h2_stack::I().new_piece("realloc", size, 0, nullptr);
       if (old_p && new_p) memcpy(new_p->user_ptr, old_p->user_ptr, std::min(old_p->user_size, size));
@@ -7861,7 +7908,7 @@ static inline bool h2_attach_debugger()
       h2_once_if()
       {
          char cmd[512];
-         ::printf("\nEnter \033[33mpassword\033[0m for connecting \033[33m%s\033[0m. \n", O.os == 'L' ? "GDB" : "LLDB");
+         ::printf("\nEnter \033[33mpassword\033[0m for connecting \033[33m%s\033[0m. \n", O.os == OsMacOS ? "GDB" : "LLDB");
 #if defined __linux
          sprintf(cmd, "sudo gdb --silent -ex cont --pid=%d", (int)getpid());
 #elif defined __APPLE__
@@ -7943,7 +7990,7 @@ struct h2_exception_handler {
    static void RaiseException(DWORD dwExceptionCode, DWORD dwExceptionFlags, DWORD nNumberOfArguments, const ULONG_PTR* lpArguments)
    {
       h2_exception::I().last_bt = h2_backtrace::dump(1);
-      if (O.exception_as_fail) h2_runner::failing(h2_fail::new_exception("was thrown", "", h2_exception::I().last_bt));
+      if (O.as_waring_exception) h2_runner::failing(h2_fail::new_exception("was thrown", "", h2_exception::I().last_bt, true));
       h2::h2_stub_temporary_restore t((void*)::RaiseException);
       ::RaiseException(dwExceptionCode, dwExceptionFlags, nNumberOfArguments, lpArguments);
    }
@@ -7955,7 +8002,7 @@ struct h2_exception_handler {
       h2_exception::I().last_bt = h2_backtrace::dump(1);
       h2_cxa::demangle(type_info->name(), h2_exception::I().last_type);
       if (h2_exception::I().catching) ::longjmp(h2_exception::I().catch_hole, 1);
-      if (O.exception_as_fail) h2_runner::failing(h2_fail::new_exception("was thrown", h2_exception::I().last_type, h2_exception::I().last_bt));
+      if (O.as_waring_exception) h2_runner::failing(h2_fail::new_exception("was thrown", h2_exception::I().last_type, h2_exception::I().last_bt, true));
       h2::h2_stub_temporary_restore t((void*)abi::__cxa_throw);
       abi::__cxa_throw(thrown_exception, type_info, dest);
    }
@@ -8082,9 +8129,9 @@ struct h2_source : h2_libc {
    h2_source(void* source_fp_, const char* srcfn, const char* filine) : source_fp(source_fp_)
    {
       if (!h2_e9_save(source_fp, origin_opcode)) {
-         h2_console::prints("yellow", "STUB %s by %s() failed %s\n", srcfn, O.os == 'W' ? "VirtualProtect" : "mprotect", filine);
-         if (O.os == 'm') h2_console::prints("", "try: "), h2_console::prints("green", "printf '\\x07' | dd of=%s bs=1 seek=160 count=1 conv=notrunc\n", O.path);
-         if (O.os == 'L') h2_console::prints("", "try: "), h2_console::prints("green", "objcopy --writable-text %s\n", O.path);
+         h2_console::prints("yellow", "STUB %s by %s() failed %s\n", srcfn, O.os == OsWindows ? "VirtualProtect" : "mprotect", filine);
+         if (O.os == OsMacOS) h2_console::prints("", "try: "), h2_console::prints("green", "printf '\\x07' | dd of=%s bs=1 seek=160 count=1 conv=notrunc\n", O.path);
+         if (O.os == OsLinux) h2_console::prints("", "try: "), h2_console::prints("green", "objcopy --writable-text %s\n", O.path);
       }
    }
    ~h2_source() { h2_e9_reset(source_fp, origin_opcode); }
@@ -8796,7 +8843,7 @@ h2_inline void h2_case::clear()
 
 h2_inline void h2_case::prev_setup()
 {
-   failed = false;
+   failed = warning = false;
    h2_memory::stack::push(filine);
    stats.timecost = h2_now();
 }
@@ -8814,10 +8861,11 @@ h2_inline void h2_case::post_cleanup()
 h2_inline void h2_case::failing(h2_fail* fail, bool defer, bool append)
 {
    if (fail) {
-      failed = true;
+      if (fail->warning) warning = true;
+      else failed = true;
       if (fails && !append) delete fail;
       else h2_fail::append_subling(fails, fail);
-      if (!defer) ::longjmp(fail_hole, 1);
+      if (!defer && !fail->warning) ::longjmp(fail_hole, 1);
    }
 }
 // source/core/h2_suite.cpp
@@ -8862,7 +8910,7 @@ h2_inline void h2_suite::test(h2_case* c)
    } catch (...) {
       uncaught = true;
    }
-   if (uncaught) c->failing(h2_fail::new_exception("was thrown but uncaught", h2_exception::I().last_type, h2_exception::I().last_bt), true, O.continue_assert);
+   if (uncaught) c->failing(h2_fail::new_exception("was thrown but uncaught", h2_exception::I().last_type, h2_exception::I().last_bt, O.as_waring_uncaught), true, O.continue_assert);
    c->post_cleanup();
 }
 
@@ -8896,34 +8944,36 @@ static inline bool match_tags(const char* const patterns[], const h2_test* test)
    return false;
 }
 
-static inline bool __filter(const h2_test* s, const h2_test* c, const char* const includes[], const char* const excludes[], bool tags_filter)
+static inline bool __filter(const h2_test* s, const h2_test* c, const char* const includes[], const char* const excludes[], const char* const file_includes[], const char* const file_excludes[], const char* const suite_includes[], const char* const suite_excludes[], const char* const case_includes[], const char* const case_excludes[], const char* const tags_includes[], const char* const tags_excludes[])
 {
-   if (tags_filter) {
-      if (includes[0])
-         if (!(match_tags(includes, s) || c && match_tags(includes, c)))  // priority && > ||
-            return true;
-      if (excludes[0])
-         if (match_tags(excludes, s) || c && match_tags(excludes, c))
-            return true;
-   } else {
-      if (includes[0])
-         if (!(match_names(includes, s->name) || c && match_names(includes, c->name) || match_names(includes, c ? c->filine : s->filine)))
-            return true;
-      if (excludes[0])
-         if (match_names(excludes, s->name) || c && match_names(excludes, c->name) || match_names(excludes, c ? c->filine : s->filine))
-            return true;
+   if (includes[0] || file_includes[0] || suite_includes[0] || case_includes[0] || tags_includes[0]) {
+      bool m = false;
+      if (includes[0]) m = m || (match_names(includes, s->filine) || c && match_names(includes, c->filine) || match_names(includes, s->name) || c && match_names(includes, c->name) || match_tags(includes, s) || c && match_tags(includes, c));
+      if (file_includes[0]) m = m || (match_names(file_includes, s->filine) || c && match_names(file_includes, c->filine));
+      if (suite_includes[0]) m = m || match_names(suite_includes, s->name);
+      if (case_includes[0]) m = m || c && match_names(case_includes, c->name);  // priority && > ||
+      if (tags_includes[0]) m = m || (match_tags(tags_includes, s) || c && match_tags(tags_includes, c));
+      if (!m) return true;
    }
+   if (excludes[0])
+      if ((match_names(excludes, s->filine) || c && match_names(excludes, c->filine)) ||
+          (match_names(excludes, s->name) || c && match_names(excludes, c->name)) ||
+          (match_tags(excludes, s) || c && match_tags(excludes, c))) return true;
+   if (file_excludes[0] && (match_names(file_excludes, s->filine) || c && match_names(file_excludes, c->filine))) return true;
+   if (suite_excludes[0] && match_names(suite_excludes, s->name)) return true;
+   if (case_excludes[0] && c && match_names(case_excludes, c->name)) return true;
+   if (tags_excludes[0] && (match_tags(tags_excludes, s) || c && match_tags(tags_excludes, c))) return true;
    return false;
 }
 
 static inline void h2_filter_suite(h2_suite* s)
 {
-   s->filtered = __filter(s, nullptr, O.includes, O.excludes, O.tags_filter);
+   s->filtered = __filter(s, nullptr, O.includes, O.excludes, O.file_includes, O.file_excludes, O.suite_includes, O.suite_excludes, O.case_includes, O.case_excludes, O.tags_includes, O.tags_excludes);
 }
 
 static inline void h2_filter_case(h2_suite* s, h2_case* c)
 {
-   c->filtered = __filter(s, c, O.includes, O.excludes, O.tags_filter);
+   c->filtered = __filter(s, c, O.includes, O.excludes, O.file_includes, O.file_excludes, O.suite_includes, O.suite_excludes, O.case_includes, O.case_excludes, O.tags_includes, O.tags_excludes);
    if (!c->filtered) s->filtered = false;
 }
 // source/core/h2_runner.cpp
@@ -9081,7 +9131,9 @@ h2_inline int h2_runner::main(int argc, const char** argv)
                for (int i = 0; global_case_setups[i]; ++i) global_case_setups[i]();
                s->test(c);
                for (int i = 0; global_case_cleanups[i]; ++i) global_case_cleanups[i]();
-               c->failed ? (stats.failed++, s->stats.failed++) : (stats.passed++, s->stats.passed++);
+               if (c->failed) stats.failed++, s->stats.failed++;
+               else if (c->warning) stats.warning++, s->stats.warning++;
+               else stats.passed++, s->stats.passed++;
             }
             h2_report::I().on_case_endup(s, c);
             c->clear();
@@ -9101,7 +9153,7 @@ h2_inline int h2_runner::main(int argc, const char** argv)
    h2_stubs::clear(stubs);
    h2_mocks::clear(mocks, false);
    h2_memory::finalize();
-   return O.quit_exit_code ? stats.failed : 0;
+   return O.exit_with_fails ? stats.failed : 0;
 }
 
 h2_inline void h2_runner::stub(void* srcfp, void* dstfp, const char* srcfn, const char* filine)
@@ -9197,7 +9249,9 @@ h2_inline h2_ostringstream& h2_assert::stash(h2_fail* fail, const char* assert_t
 
 h2_inline void h2_assert::failing(const char* e_expression, const char* a_expression, const char* filine)
 {
+   bool as_warning = h2_warning::I().swap(false);
    if (fails) {
+      fails->warning = as_warning;
       fails->user_explain = oss.str().c_str();
       fails->filine = filine;
       fails->e_expression = e_expression;
@@ -9402,13 +9456,16 @@ struct h2_fail_unexpect : h2_fail {
    }
    void print_OK2(const char* type, h2_line& line)
    {
+      static const char* R_Arrows[] = {"==>", "»", "⇛", "⟹  ", "⇒ "};  // →►
+      static const char* L_Arrows[] = {"<==", "«", "⇚", "⟸  ", "⇐ "};  // ←◄
+      static constexpr int Arrow = 3;
       h2_line e, a;
       if (!expection.width()) {
          e = h2_line(e_expression).abbreviate(10000, 3).gray_quote().brush("green");
       } else if (is_synonym(e_expression, expection.string())) {
          e = h2_line(e_expression).abbreviate(10000, 3).brush("green");
       } else {
-         e = h2_line(e_expression).abbreviate(O.verbose >= VerboseDetail ? 10000 : 120, 3).gray_quote().brush("cyan") + gray("==>") + expection.abbreviate(10000, 3).brush("green");
+         e = h2_line(e_expression).abbreviate(O.verbose >= VerboseDetail ? 10000 : 120, 3).gray_quote().brush("cyan") + gray(R_Arrows[Arrow]) + expection.abbreviate(10000, 3).brush("green");
       }
 
       if (!represent.width()) {
@@ -9416,7 +9473,7 @@ struct h2_fail_unexpect : h2_fail {
       } else if (is_synonym(a_expression, represent.string()) || !a_expression.length()) {
          a = represent.abbreviate(10000, 3).brush("bold,red");
       } else {
-         a = represent.abbreviate(10000, 3).brush("bold,red") + gray("<==") + h2_line(a_expression).abbreviate(O.verbose >= VerboseDetail ? 10000 : 120, 3).gray_quote().brush("cyan");
+         a = represent.abbreviate(10000, 3).brush("bold,red") + gray(L_Arrows[Arrow]) + h2_line(a_expression).abbreviate(O.verbose >= VerboseDetail ? 10000 : 120, 3).gray_quote().brush("cyan");
       }
 
       line += type + gray("(") + e + " " + assert_op + " " + a + gray(")");
@@ -9506,6 +9563,7 @@ struct h2_fail_json : h2_fail_unexpect {
 
       h2_lines e_lines, a_lines;
       h2_fail_unexpect::print(si, ci);
+      if (e_value.width() < 16 || a_value.width() < 16) return;  // TLDR
       if (!h2_blank(O.json_source_quote) || !h2_json::diff(e_value, a_value, e_lines, a_lines, caseless)) {
          e_lines = h2_json::dump(e_value);
          a_lines = h2_json::dump(a_value);
@@ -9710,7 +9768,7 @@ struct h2_fail_use_after_free : h2_fail_memory {
 struct h2_fail_exception : h2_fail {
    const char* type;
    const h2_backtrace bt_throw;
-   h2_fail_exception(const h2_line& explain_, const char* type_, const h2_backtrace& bt_throw_, const char* filine_) : h2_fail(explain_, filine_), type(type_), bt_throw(bt_throw_) {}
+   h2_fail_exception(const h2_line& explain_, const char* type_, const h2_backtrace& bt_throw_, bool as_warning, const char* filine_) : h2_fail(explain_, filine_), type(type_), bt_throw(bt_throw_) { warning = as_warning; }
    void print(size_t si = 0, size_t ci = 0) override
    {
       h2_console::printl(" exception " + color(type, "red") + " " + explain + locate() + " at backtrace:");
@@ -9742,7 +9800,7 @@ h2_inline h2_fail* h2_fail::new_double_free(const void* ptr, const h2_backtrace&
 h2_inline h2_fail* h2_fail::new_asymmetric_free(const void* ptr, const char* who_allocate, const char* who_release, const h2_backtrace& bt_allocate, const h2_backtrace& bt_release) { return new h2_fail_asymmetric_free(ptr, who_allocate, who_release, bt_allocate, bt_release); }
 h2_inline h2_fail* h2_fail::new_overflow(const void* ptr, const size_t size, const void* violate_ptr, const char* action, const h2_vector<unsigned char>& spot, const h2_backtrace& bt_allocate, const h2_backtrace& bt_trample) { return new h2_fail_overflow(ptr, size, violate_ptr, action, spot, bt_allocate, bt_trample); }
 h2_inline h2_fail* h2_fail::new_use_after_free(const void* ptr, const void* violate_ptr, const char* action, const h2_backtrace& bt_allocate, const h2_backtrace& bt_release, const h2_backtrace& bt_use) { return new h2_fail_use_after_free(ptr, violate_ptr, action, bt_allocate, bt_release, bt_use); }
-h2_inline h2_fail* h2_fail::new_exception(const h2_line& explain_, const char* type, const h2_backtrace& bt_throw, const char* filine_) { return new h2_fail_exception(explain_, type, bt_throw, filine_); }
+h2_inline h2_fail* h2_fail::new_exception(const h2_line& explain_, const char* type, const h2_backtrace& bt_throw, bool as_warning, const char* filine_) { return new h2_fail_exception(explain_, type, bt_throw, as_warning, filine_); }
 h2_inline h2_fail* h2_fail::new_symbol(const h2_string& symbol, const h2_vector<h2_string>& candidates, const h2_line& explain_) { return new h2_fail_symbol(symbol, candidates, explain_); };
 // source/report/h2_report_console.cpp
 #define H2_UNITS(count, unit) ((count > 1) ? (unit "s") : unit)
@@ -9780,17 +9838,17 @@ struct h2_report_console : h2_report_interface {
    static const char* format_volume(long long footprint, char* s = (char*)alloca(128))
    {
       if (footprint < 1024LL) sprintf(s, "%lld", footprint);
-      else if (footprint < 1024LL * 1024LL) sprintf(s, "%.2gKB", footprint / 1024.0);
-      else if (footprint < 1024LL * 1024LL * 1024LL) sprintf(s, "%.2gMB", footprint / (1024.0 * 1024.0));
-      else sprintf(s, "%.2gGB", footprint / (1024.0 * 1024.0 * 1024.0));
+      else if (footprint < 1024LL * 1024LL) sprintf(s, "%.1fKB", footprint / 1024.0);
+      else if (footprint < 1024LL * 1024LL * 1024LL) sprintf(s, "%.2fMB", footprint / (1024.0 * 1024.0));
+      else sprintf(s, "%.3fGB", footprint / (1024.0 * 1024.0 * 1024.0));
       return s;
    }
    static const char* format_duration(long long ms, char* s = (char*)alloca(128))
    {
       if (ms < 100) sprintf(s, "%lld milliseconds", ms);
-      else if (ms < 1000 * 60) sprintf(s, "%.2g second%s", ms / 1000.0, ms == 1000 ? "" : "s");
-      else if (ms < 1000 * 60 * 60) sprintf(s, "%.2g minute%s", ms / 60000.0, ms == 60000 ? "" : "s");
-      else sprintf(s, "%.2g hour%s", ms / 3600000.0, ms == 3600000 ? "" : "s");
+      else if (ms < 1000 * 60) sprintf(s, "%.1f second%s", ms / 1000.0, ms == 1000 ? "" : "s");
+      else if (ms < 1000 * 60 * 60) sprintf(s, "%.2f minute%s", ms / 60000.0, ms == 60000 ? "" : "s");
+      else sprintf(s, "%.3f hour%s", ms / 3600000.0, ms == 3600000 ? "" : "s");
       return s;
    }
    static const char* format_units(int count, const char* unit1, const char* unit2 = nullptr, char* s = (char*)alloca(128))
@@ -9819,17 +9877,19 @@ struct h2_report_console : h2_report_interface {
    }
    void on_runner_start(h2_runner* r) override
    {
-      h2_list_for_each_entry (s, r->suites, h2_suite, x) cases += s->cases.count();
+      h2_list_for_each_entry (s, r->suites, h2_suite, x)
+         cases += s->cases.count();
    }
    void on_runner_endup(h2_runner* r) override
    {
       print_bar(false, nullptr, nullptr, nullptr, nullptr, false);
 
-      int n = nonzero_count(r->stats.failed, r->stats.todo, r->stats.filtered, r->stats.ignored);
+      int n = nonzero_count(r->stats.failed, r->stats.warning, r->stats.todo, r->stats.filtered, r->stats.ignored);
       h2_line line = (0 < r->stats.failed) ? color("Failure ", "bold,red") : color("Success ", "bold,green");
       if (0 < n) line += gray("(");
       line += color(h2_stringify(r->stats.passed), "green") + " passed";  // always print
       if (r->stats.failed) line += gray(", ") + color(h2_stringify(r->stats.failed), "red") + " failed";
+      if (r->stats.warning) line += gray(", ") + color(h2_stringify(r->stats.warning), "cyan") + " warning";
       if (r->stats.todo) line += gray(", ") + color(h2_stringify(r->stats.todo), "yellow") + " todo";
       if (r->stats.filtered) line += gray(", ") + color(h2_stringify(r->stats.filtered), "blue") + " filtered";
       if (r->stats.ignored) line += gray(", ") + color(h2_stringify(r->stats.ignored), "blue") + " ignored";
@@ -9846,10 +9906,11 @@ struct h2_report_console : h2_report_interface {
       if (O.verbose >= 9 && !(O.includes[0] || O.excludes[0])) {
          print_bar(true, nullptr, nullptr, nullptr, nullptr, false);
 
-         int n = nonzero_count(s->stats.passed, s->stats.failed, s->stats.todo, s->stats.filtered, s->stats.ignored);
+         int n = nonzero_count(s->stats.passed, s->stats.warning, s->stats.failed, s->stats.todo, s->stats.filtered, s->stats.ignored);
          h2_line line;
          if (s->stats.passed) line += gray(comma_if(line.width())) + h2_stringify(s->stats.passed) + " passed";
          if (s->stats.failed) line += gray(comma_if(line.width())) + h2_stringify(s->stats.failed) + " failed";
+         if (s->stats.warning) line += gray(comma_if(line.width())) + h2_stringify(s->stats.warning) + " warning";
          if (s->stats.todo) line += gray(comma_if(line.width())) + h2_stringify(s->stats.todo) + " todo";
          if (s->stats.filtered) line += gray(comma_if(line.width())) + h2_stringify(s->stats.filtered) + " filtered";
          if (s->stats.ignored) line += gray(comma_if(line.width())) + h2_stringify(s->stats.ignored) + " ignored";
@@ -9878,6 +9939,15 @@ struct h2_report_console : h2_report_interface {
             print_bar(true, "bold,red", "Failed ", s, c, false);
             h2_console::prints("", "\n");
             if (O.verbose >= VerboseNormal && c->fails) {
+               c->fails->foreach([](h2_fail* fail, size_t si, size_t ci) { fail->print(si, ci); });
+               h2_console::prints("", "\n");
+            }
+         }
+      } else if (c->warning) {
+         if (O.verbose >= VerboseCompactWarning) {
+            print_bar(true, "bold,cyan", "Warning", s, c, false);
+            h2_console::prints("", "\n");
+            if (O.verbose > VerboseNormal && c->fails) {
                c->fails->foreach([](h2_fail* fail, size_t si, size_t ci) { fail->print(si, ci); });
                h2_console::prints("", "\n");
             }
@@ -10033,7 +10103,7 @@ struct h2_report_junit : h2_report_interface {
    void on_case_endup(h2_suite* s, h2_case* c) override
    {
       if (!f) return;
-      fprintf(f, "<testcase classname=\"%s\" name=\"%s\" status=\"%s\" time=\"%.3f\">\n", s->name, c->name, c->todo ? "TODO" : (c->filtered ? "Filtered" : (c->ignored ? "Ignored" : (c->failed ? "Failed" : "Passed"))), c->stats.timecost / 1000.0);
+      fprintf(f, "<testcase classname=\"%s\" name=\"%s\" status=\"%s\" time=\"%.3f\">\n", s->name, c->name, c->todo ? "TODO" : (c->filtered ? "Filtered" : (c->ignored ? "Ignored" : (c->failed ? "Failed" : (c->warning ? "Warning" : "Passed")))), c->stats.timecost / 1000.0);
       if (c->failed) {
          fprintf(f, "<failure message=\"%s:", c->filine);
          if (c->fails) c->fails->foreach([&](h2_fail* fail, size_t si, size_t ci) {fprintf(f, "{newline}"); fail->print(f); });
@@ -10075,33 +10145,48 @@ h2_inline void h2_report::on_suite_endup(h2_suite* s) { for (int i = 0; reports[
 h2_inline void h2_report::on_case_start(h2_suite* s, h2_case* c) { for (int i = 0; reports[i]; ++i) reports[i]->on_case_start(s, c); }
 h2_inline void h2_report::on_case_endup(h2_suite* s, h2_case* c) { for (int i = 0; reports[i]; ++i) reports[i]->on_case_endup(s, c); }
 // source/option/h2_option.cpp
-/* clang-format off */
-static inline void usage()
+static inline int usage(const char* option)
 {
-   ::printf(" \033[90mhttps://github.com/lingjf/\033[0m\033[32mh2unit\033[0m \033[90mv\033[0m%s \033[90m%s\033[0m\n", H2PP_STR(H2UNIT_VERSION), H2PP_STR(H2UNIT_REVISION));
+   if (option && (!strcmp("i", option) || !strcmp("e", option))) {
+      return ::printf("\033[36m-i/e pattern\033[0m: include in file:line, suite name, case name, suite tags, case tags\n"
+                      "\033[36m-i/e file=pattern\033[0m: include in file:line\n"
+                      "\033[36m-i/e suite=pattern\033[0m: include in suite name\n"
+                      "\033[36m-i/e case=pattern\033[0m: include in case name\n"
+                      "\033[36m-i/e tags=pattern\033[0m: include in suite tags or case tags\n");
+   }
+   if (option && !strcmp("W", option)) {
+      return ::printf("\033[36mexception\033[0m: consider thrown exception as warning\n"
+                      "\033[36muncaught\033[0m: consider uncaught exception as warning\n"
+                      "\033[36mleak\033[0m: consider memory leak as warning\n"
+                      "\033[36mviolate\033[0m: consider memory violate access as warning\n"
+                      "\033[36mdouble_free\033[0m: consider memory double free as warning\n"
+                      "\033[36masymmetric_free\033[0m: consider memory asymmetric free as warning\n");
+   }
+   ::printf(" \033[32mh₂unit\033[0m \033[90mv\033[0m%s  \033[90m%s\033[0m  \033[90m%s\033[0m\n", H2PP_STR(H2UNIT_VERSION), H2PP_STR(H2UNIT_DATE), H2PP_STR(H2UNIT_REVISION));
+   /* clang-format off */
 #define H2_USAGE_BR "\033[90m├─────┼───────────┼────────────────────────────────────────────────────────────┤\033[0m\n"
-   ::printf("\033[90m┌─────┬───────────┬────────────────────────────────────────────────────────────┐\033[0m\n"
-            "\033[90m│\033[0m" " -\033[36mb\033[0m  "                               "\033[90m│\033[0m" "   \033[90m[\033[0mn=1\033[90m]\033[0m   "     "\033[90m│\033[0m" " \033[36mb\033[0mreak test once n (default 1) cases failed                 "                               "\033[90m│\033[0m\n" H2_USAGE_BR
-            "\033[90m│\033[0m" " -\033[36mc\033[0m  "                               "\033[90m│\033[0m" "           "                                   "\033[90m│\033[0m" " \033[36mc\033[0montinue asserts even if failure occurred                  "                               "\033[90m│\033[0m\n" H2_USAGE_BR
-            "\033[90m│\033[0m" " -\033[36md\033[0m  "                               "\033[90m│\033[0m" "           "                                   "\033[90m│\033[0m" " \033[36md\033[0mebug with gdb once failure occurred                       "                               "\033[90m│\033[0m\n" H2_USAGE_BR
-            "\033[90m│\033[0m" " -\033[36mf\033[0m  "                               "\033[90m│\033[0m" "           "                                   "\033[90m│\033[0m" " Only test last \033[36mf\033[0mailed cases                                "                               "\033[90m│\033[0m\n" H2_USAGE_BR
-            "\033[90m│\033[0m" " -\033[36mF\033[0m  "                               "\033[90m│\033[0m" "  \033[90m[\033[0mn=max\033[90m]\033[0m  "     "\033[90m│\033[0m" " \033[36mF\033[0mold json print, 0:unfold 1:short 2:same 3:single          "                               "\033[90m│\033[0m\n" H2_USAGE_BR
-            "\033[90m│\033[0m" " -\033[36mi\033[0m\033[90m/\033[0m\033[36me\033[0m" "\033[90m│\033[0m" "\033[90m[\033[0mpattern .\033[90m]\033[0m"     "\033[90m│\033[0m" " \033[36mi\033[0mnclude\033[90m/\033[0m\033[36me\033[0mxclude case suite or file by substr wildcard      " "\033[90m│\033[0m\n" H2_USAGE_BR
-            "\033[90m│\033[0m" " -\033[36ml\033[0m  "                               "\033[90m│\033[0m" "  \033[90m[\033[0mtype .\033[90m]\033[0m "     "\033[90m│\033[0m" " \033[36ml\033[0mist suites cases and tags, type [suite case todo tags]    "                               "\033[90m│\033[0m\n" H2_USAGE_BR
-            "\033[90m│\033[0m" " -\033[36mm\033[0m  "                               "\033[90m│\033[0m" "           "                                   "\033[90m│\033[0m" " Test cases without \033[36mm\033[0memory check                            "                               "\033[90m│\033[0m\n" H2_USAGE_BR
-            "\033[90m│\033[0m" " -\033[36mo\033[0m  "                               "\033[90m│\033[0m" "  \033[90m[\033[0mpath\033[90m]\033[0m   "     "\033[90m│\033[0m" " \033[36mo\033[0mutput junit report, default is <executable>.junit.xml     "                               "\033[90m│\033[0m\n" H2_USAGE_BR
-            "\033[90m│\033[0m" " -\033[36mp\033[0m  "                               "\033[90m│\033[0m" "           "                                   "\033[90m│\033[0m" " Disable test percentage \033[36mp\033[0mrogressing bar                    "                               "\033[90m│\033[0m\n" H2_USAGE_BR
-            "\033[90m│\033[0m" " -\033[36mq\033[0m  "                               "\033[90m│\033[0m" "           "                                   "\033[90m│\033[0m" " \033[36mq\033[0muit exit code as failed cases count                       "                               "\033[90m│\033[0m\n" H2_USAGE_BR
-            "\033[90m│\033[0m" " -\033[36mr\033[0m  "                               "\033[90m│\033[0m" "   \033[90m[\033[0mn=2\033[90m]\033[0m   "     "\033[90m│\033[0m" " Repeat test n (default 2) \033[36mr\033[0mounds                           "                               "\033[90m│\033[0m\n" H2_USAGE_BR
-            "\033[90m│\033[0m" " -\033[36ms\033[0m  "                               "\033[90m│\033[0m" "\033[90m[\033[0mtype=rand\033[90m]\033[0m"     "\033[90m│\033[0m" " \033[36ms\033[0mhuffle cases random/alphabet/reverse if no last failed    "                               "\033[90m│\033[0m\n" H2_USAGE_BR
-            "\033[90m│\033[0m" " -\033[36mS\033[0m  "                               "\033[90m│\033[0m" " \033[90m[\033[0mtype=\\\"\033[90m]\033[0m "   "\033[90m│\033[0m" " JSON C/C++ \033[36mS\033[0mource code, type [\\\'/single \\\"/double \\\\\\\"]    "                       "\033[90m│\033[0m\n" H2_USAGE_BR
-            "\033[90m│\033[0m" " -\033[36mt\033[0m  "                               "\033[90m│\033[0m" "           "                                   "\033[90m│\033[0m" " \033[36mt\033[0mags include/exclude filter                                "                               "\033[90m│\033[0m\n" H2_USAGE_BR
-            "\033[90m│\033[0m" " -\033[36mv\033[0m  "                               "\033[90m│\033[0m" "  \033[90m[\033[0mn=max\033[90m]\033[0m  "     "\033[90m│\033[0m" " \033[36mv\033[0merbose, 0:quiet 1/2:compact 3:normal 4:details            "                               "\033[90m│\033[0m\n" H2_USAGE_BR
-            "\033[90m│\033[0m" " -\033[36mw\033[0m  "                               "\033[90m│\033[0m" "           "                                   "\033[90m│\033[0m" " Console output in black-\033[36mw\033[0mhite color style                  "                               "\033[90m│\033[0m\n" H2_USAGE_BR
-            "\033[90m│\033[0m" " -\033[36mx\033[0m  "                               "\033[90m│\033[0m" "           "                                   "\033[90m│\033[0m" " Thrown e\033[36mx\033[0mception is considered as failure                  "                               "\033[90m│\033[0m\n"
-            "\033[90m└─────┴───────────┴────────────────────────────────────────────────────────────┘\033[0m\n");
+   return ::printf("\033[90m┌─────┬───────────┬────────────────────────────────────────────────────────────┐\033[0m\n"
+                   "\033[90m│\033[0m" " -\033[36mb\033[0m  "                               "\033[90m│\033[0m" "   \033[90m[\033[0mn=1\033[90m]\033[0m   "     "\033[90m│\033[0m" " \033[36mb\033[0mreak test once n (default 1) cases failed                 "                               "\033[90m│\033[0m\n" H2_USAGE_BR
+                   "\033[90m│\033[0m" " -\033[36mc\033[0m  "                               "\033[90m│\033[0m" "           "                                   "\033[90m│\033[0m" " \033[36mc\033[0montinue asserts even if failure occurred                  "                               "\033[90m│\033[0m\n" H2_USAGE_BR
+                   "\033[90m│\033[0m" " -\033[36mC\033[0m  "                               "\033[90m│\033[0m" "           "                                   "\033[90m│\033[0m" " Console output in black-white \033[36mC\033[0molor style                  "                               "\033[90m│\033[0m\n" H2_USAGE_BR
+                   "\033[90m│\033[0m" " -\033[36md\033[0m  "                               "\033[90m│\033[0m" "           "                                   "\033[90m│\033[0m" " \033[36md\033[0mebug with gdb/lldb once failure occurred                  "                               "\033[90m│\033[0m\n" H2_USAGE_BR
+                   "\033[90m│\033[0m" " -\033[36mf\033[0m  "                               "\033[90m│\033[0m" "           "                                   "\033[90m│\033[0m" " Only test last \033[36mf\033[0mailed cases                                "                               "\033[90m│\033[0m\n" H2_USAGE_BR
+                   "\033[90m│\033[0m" " -\033[36mF\033[0m  "                               "\033[90m│\033[0m" "  \033[90m[\033[0mn=max\033[90m]\033[0m  "     "\033[90m│\033[0m" " \033[36mF\033[0mold json print, 0:unfold 1:short 2:same 3:single          "                               "\033[90m│\033[0m\n" H2_USAGE_BR
+                   "\033[90m│\033[0m" " -\033[36mi\033[0m\033[90m/\033[0m\033[36me\033[0m" "\033[90m│\033[0m" "\033[90m[\033[0mpattern .\033[90m]\033[0m"     "\033[90m│\033[0m" " \033[36mi\033[0mnclude\033[90m/\033[0m\033[36me\033[0mxclude by case suite file or tags, -h i...        " "\033[90m│\033[0m\n" H2_USAGE_BR
+                   "\033[90m│\033[0m" " -\033[36ml\033[0m  "                               "\033[90m│\033[0m" "  \033[90m[\033[0mtype .\033[90m]\033[0m "     "\033[90m│\033[0m" " \033[36ml\033[0mist suites cases and tags, type [suite case todo tags]    "                               "\033[90m│\033[0m\n" H2_USAGE_BR
+                   "\033[90m│\033[0m" " -\033[36mm\033[0m  "                               "\033[90m│\033[0m" "           "                                   "\033[90m│\033[0m" " Test cases without \033[36mm\033[0memory check                            "                               "\033[90m│\033[0m\n" H2_USAGE_BR
+                   "\033[90m│\033[0m" " -\033[36mo\033[0m  "                               "\033[90m│\033[0m" "  \033[90m[\033[0mpath\033[90m]\033[0m   "     "\033[90m│\033[0m" " \033[36mo\033[0mutput junit report, default is <executable>.junit.xml     "                               "\033[90m│\033[0m\n" H2_USAGE_BR
+                   "\033[90m│\033[0m" " -\033[36mp\033[0m  "                               "\033[90m│\033[0m" "           "                                   "\033[90m│\033[0m" " Disable test percentage \033[36mp\033[0mrogressing bar                    "                               "\033[90m│\033[0m\n" H2_USAGE_BR
+                   "\033[90m│\033[0m" " -\033[36mr\033[0m  "                               "\033[90m│\033[0m" "   \033[90m[\033[0mn=2\033[90m]\033[0m   "     "\033[90m│\033[0m" " Repeat test n (default 2) \033[36mr\033[0mounds                           "                               "\033[90m│\033[0m\n" H2_USAGE_BR
+                   "\033[90m│\033[0m" " -\033[36ms\033[0m  "                               "\033[90m│\033[0m" "\033[90m[\033[0mtype=rand\033[90m]\033[0m"     "\033[90m│\033[0m" " \033[36ms\033[0mhuffle cases random/alphabet/reverse if no last failed    "                               "\033[90m│\033[0m\n" H2_USAGE_BR
+                   "\033[90m│\033[0m" " -\033[36mS\033[0m  "                               "\033[90m│\033[0m" " \033[90m[\033[0mtype=\\\"\033[90m]\033[0m "   "\033[90m│\033[0m" " JSON C/C++ \033[36mS\033[0mource code, type [\\\'/single \\\"/double \\\\\\\"]    "                       "\033[90m│\033[0m\n" H2_USAGE_BR
+                   "\033[90m│\033[0m" " -\033[36mv\033[0m  "                               "\033[90m│\033[0m" "  \033[90m[\033[0mn=max\033[90m]\033[0m  "     "\033[90m│\033[0m" " \033[36mv\033[0merbose, 0:quiet 1/2/3:compact 4:normal 5:details          "                               "\033[90m│\033[0m\n" H2_USAGE_BR
+                   "\033[90m│\033[0m" " -\033[36mx\033[0m  "                               "\033[90m│\033[0m" "           "                                   "\033[90m│\033[0m" " e\033[36mx\033[0mit code as failed cases count                            "                               "\033[90m│\033[0m\n" H2_USAGE_BR
+                   "\033[90m│\033[0m" " -\033[36mW\033[0m  "                               "\033[90m│\033[0m" "  \033[90m[\033[0mtype .\033[90m]\033[0m "     "\033[90m│\033[0m" " Configure failure as \033[36mW\033[0marning, exception, leak, -h W...     "                               "\033[90m│\033[0m\n" H2_USAGE_BR
+                   "\033[90m│\033[0m" " -\033[36mh\033[0m\033[90m/\033[0m\033[36m?\033[0m" "\033[90m│\033[0m" "  \033[90m[\033[0moption\033[90m]\033[0m "     "\033[90m│\033[0m" " https://github.com/lingjf/h2unit/.../document/option.md    "                                              "\033[90m│\033[0m\n"
+                   "\033[90m└─────┴───────────┴────────────────────────────────────────────────────────────┘\033[0m\n");
+   /* clang-format on */
 }
-/* clang-format on */
 
 struct getopt {
    int argc;
@@ -10153,19 +10238,41 @@ h2_inline void h2_option::parse(int argc, const char** argv)
    getopt get(argc - 1, argv + 1);
    get.arguments(args);
 
+   char t2[64];
    for (const char* t;;) {
       switch (get.next_option()) {
          case '\0': return;
          case 'b': get.extract_number(break_after_fails = 1); break;
          case 'c': continue_assert = true; break;
+         case 'C': colorful = !colorful; break;
          case 'd': debugger_trap = true; break;
          case 'e':
-            while ((t = get.extract_string())) h2_array_append(excludes, t);
+            while ((t = get.extract_string())) {
+               const char* eq = strchr(t, '=');
+               if (eq) {
+                  const char* r = h2_candidate(strcpyn(t2, t, eq - t), 4, "file", "suite", "case", "tags");
+                  if (!strcmp("file", r)) h2_array_append(file_excludes, eq + 1);
+                  else if (!strcmp("suite", r)) h2_array_append(suite_excludes, eq + 1);
+                  else if (!strcmp("case", r)) h2_array_append(case_excludes, eq + 1);
+                  else if (!strcmp("tags", r)) h2_array_append(tags_excludes, eq + 1);
+                  else ::printf("-e %s\n", r), exit(-1);
+               } else h2_array_append(excludes, t);
+            }
             break;
          case 'f': only_last_failed = true; break;
          case 'F': get.extract_number(fold_json = 0); break;
          case 'i':
-            while ((t = get.extract_string())) h2_array_append(includes, t);
+            while ((t = get.extract_string())) {
+               const char* eq = strchr(t, '=');
+               if (eq) {
+                  const char* r = h2_candidate(strcpyn(t2, t, eq - t), 4, "file", "suite", "case", "tags");
+                  if (!strcmp("file", r)) h2_array_append(file_includes, eq + 1);
+                  else if (!strcmp("suite", r)) h2_array_append(suite_includes, eq + 1);
+                  else if (!strcmp("case", r)) h2_array_append(case_includes, eq + 1);
+                  else if (!strcmp("tags", r)) h2_array_append(tags_includes, eq + 1);
+                  else ::printf("-i %s\n", r), exit(-1);
+               } else h2_array_append(includes, t);
+            }
             break;
          case 'l':
             while ((t = get.extract_string())) {
@@ -10184,7 +10291,6 @@ h2_inline void h2_option::parse(int argc, const char** argv)
             if ((t = get.extract_string())) strcpy(junit_path, t);
             break;
          case 'p': progressing = !progressing; break;
-         case 'q': quit_exit_code = true; break;
          case 'r': get.extract_number(run_rounds = 2); break;
          case 's':
             while ((t = get.extract_string())) {
@@ -10209,12 +10315,22 @@ h2_inline void h2_option::parse(int argc, const char** argv)
                if (!h2_in(json_source_quote, 3, "\'", "\"", "\\\"")) json_source_quote = "\\\"";
             }
             break;
-         case 't': tags_filter = true; break;
          case 'v': get.extract_number(verbose = 8); break;
-         case 'w': colorful = !colorful; break;
-         case 'x': exception_as_fail = true; break;
+         case 'x': exit_with_fails = true; break;
+         case 'W':
+            while ((t = get.extract_string())) {
+               const char* r = h2_candidate(t, 5, "exception", "uncaught", "leak", "violate", "asymmetric_free");
+               if (!strcmp("exception", r)) as_waring_exception = true;
+               else if (!strcmp("uncaught", r)) as_waring_uncaught = true;
+               else if (!strcmp("leak", r)) as_waring_memory_leak = true;
+               else if (!strcmp("violate", r)) as_waring_memory_violate = true;
+               else if (!strcmp("double_free", r)) as_waring_memory_double_free = true;
+               else if (!strcmp("asymmetric_free", r)) as_waring_memory_asymmetric_free = true;
+               else ::printf("-W %s\n", r), exit(-1);
+            }
+            break;
          case 'h':
-         case '?': usage(); exit(0);
+         case '?': usage(get.extract_string()); exit(0);
       }
    }
 }
