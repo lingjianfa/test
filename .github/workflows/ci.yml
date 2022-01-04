@@ -18,7 +18,7 @@ jobs:
   gcc:
     runs-on: ubuntu-latest
     container:
-      image: centos
+      image: gcc
     steps:  
     - uses: actions/checkout@v2
     - name: What OS is running
