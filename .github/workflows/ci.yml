@@ -4,13 +4,24 @@ on: push
 
 jobs:
   
-  atest:
+  centos:
     runs-on: ubuntu-latest
     container:
-      image: alpine
+      image: centos
     steps:  
     - uses: actions/checkout@v2
     - name: What OS is running
       run: uname -a
     - name: Build test
-      run: cd starter && make
+      run: cmake . && make
+
+  gcc:
+    runs-on: ubuntu-latest
+    container:
+      image: centos
+    steps:  
+    - uses: actions/checkout@v2
+    - name: What OS is running
+      run: uname -a
+    - name: Build test
+      run: g++ -std=c++11 test.cpp
