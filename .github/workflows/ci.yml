@@ -51,6 +51,9 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: silkeh/clang:11
+    env:
+      CC: clang
+      CXX: clang++
     steps:  
     - uses: actions/checkout@v2
     - name: What OS is running
