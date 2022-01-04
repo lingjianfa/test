@@ -64,10 +64,12 @@ jobs:
           - {image: "silkeh/clang", ver: "11", cc: 'clang', cxx: 'clang++'}
           - {image: "silkeh/clang", ver: "12", cc: 'clang', cxx: 'clang++'}
           - {image: "silkeh/clang", ver: "latest", cc: 'clang', cxx: 'clang++'}
-    name: docker-${{matrix.gcc}}-${{matrix.cc}}
+    name: docker-${{matrix.cc}}-${{matrix.ver}}
     container:
       image: ${{matrix.image}}:${{matrix.ver}}
     steps:
     - uses: actions/checkout@v2
+    - name: version
+      run: ${{matrix.cxx}} --version
     - name: Build test
-      run: ${{matrix.cxx}} -std=c++14 test.cpp && ./a.out
+      run: ${{matrix.cxx}} -std=c++14 test.cpp && ./a.out -C
