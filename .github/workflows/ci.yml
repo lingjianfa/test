@@ -81,4 +81,4 @@ jobs:
     - name: version
       run: ${{matrix.cxx}} --version
     - name: Build test
-      run: ${{matrix.cxx}} -std=c++14 test.cpp && ./a.out -C
+      run: ${{matrix.cxx}} -std=c++14 test.cpp && ./a.out -h && ./a.out -C
