@@ -61,8 +61,8 @@ jobs:
     - name: make version
       run: make --version
     - name: gcc version
-      run: ${{CC}} --version
+      run: clang++ --version
     - name: gcc version
-      run: ${{CXX}} --version
+      run: clang++ --version
     - name: Build test
       run: clang++ -std=c++14 test.cpp && ./a.out
