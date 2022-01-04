@@ -23,6 +23,8 @@ jobs:
     - uses: actions/checkout@v2
     - name: What OS is running
       run: uname -a
+    - name: make version
+      run: make --version
     - name: gcc version
       run: g++ --version
     - name: Build test
