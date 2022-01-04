@@ -23,5 +23,7 @@ jobs:
     - uses: actions/checkout@v2
     - name: What OS is running
       run: uname -a
+    - name: gcc version
+      run: g++ --version
     - name: Build test
       run: g++ -std=c++11 test.cpp
