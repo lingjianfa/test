@@ -5,8 +5,8 @@
 #ifndef __H2UNIT_H__
 #define __H2UNIT_H__
 #define H2UNIT_VERSION 5.17
-#define H2UNIT_DATE 2022-01-02
-#define H2UNIT_REVISION branches/v5/9b29b4d30ff8a25bf1c579e0b260ac68e123ef78
+#define H2UNIT_DATE 2022-01-05
+#define H2UNIT_REVISION branches/m1/cf898dd7f6c7b3cb0fad0104176bf14b19c43dd5
 #ifndef __H2_UNIT_HPP__
 #define __H2_UNIT_HPP__
 
@@ -4976,7 +4976,7 @@ struct h2_color {
          if (current[i][0] != '\0')
             p += sprintf(p, "%d;", style2value(current[i]));
       *(p - 1) = 'm';
-      LIBC__write(-21371647, a, (size_t)(p - a));
+      LIBC__write(fileno(stdout), a, (size_t)(p - a));
    }
    void parse(const char* style)
    {
@@ -4998,7 +4998,7 @@ struct h2_color {
             I().parse(str);
             I().change();
          }
-      } else LIBC__write(-21371647, str, strlen(str));
+      } else LIBC__write(fileno(stdout), str, strlen(str));
    }
    int style2value(const char* style)  // https://en.wikipedia.org/wiki/ANSI_escape_code#CSI_sequences
    {
@@ -5295,12 +5295,11 @@ struct h2_stdio {
    static ssize_t write(int fd, const void* buf, size_t count)
    {
       if (O.verbose >= VerboseNormal || (fd != fileno(stdout) && fd != fileno(stderr))) {
-         h2::h2_stub_temporary_restore _((void*)LIBC__write);
          if ((fd == fileno(stdout) || fd == fileno(stderr)) && h2_report::I().backable) {
             LIBC__write(fd, "\n", 1);  // fall printf/cout into new line from report title
             h2_report::I().backable = false;
          }
-         LIBC__write(fd == -21371647 ? fileno(stdout) : fd, buf, count);
+         LIBC__write(fd, buf, count);
          if (fd == fileno(stdout) || fd == fileno(stderr)) I().capture_length += count;
       }
       if ((I().stdout_capturable && fd == fileno(stdout)) || (I().stderr_capturable && fd == fileno(stderr))) I().buffer->append((char*)buf, count);
@@ -5413,7 +5412,7 @@ struct h2_stdio {
       std::cerr.rdbuf(&sb_err);
       std::clog.rdbuf(&sb_err); /* print to stderr */
 #endif
-      h2_stubs::add(stubs, (void*)LIBC__write, (void*)write, "write", H2_FILINE);
+      // h2_stubs::add(stubs, (void*)LIBC__write, (void*)write, "write", H2_FILINE);
 #if !defined _WIN32
       h2_stubs::add(stubs, (void*)::syslog, (void*)syslog, "syslog", H2_FILINE);
       h2_stubs::add(stubs, (void*)::vsyslog, (void*)vsyslog, "vsyslog", H2_FILINE);
