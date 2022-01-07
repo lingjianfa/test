@@ -6,6 +6,7 @@ jobs:
   
   a1:
     runs-on: ubuntu-latest
+    name: z1
     steps:  
     - uses: actions/checkout@v2
     - name: What OS is running
@@ -16,6 +17,7 @@ jobs:
       run: g++ -std=c++14 test.cpp && ./a.out
   a2:
     runs-on: ubuntu-latest
+    name: z2
     steps:  
     - uses: actions/checkout@v2
     - name: What OS is running
@@ -26,6 +28,7 @@ jobs:
       run: g++ -std=c++14 test.cpp && ./a.out
   a3:
     runs-on: ubuntu-latest
+    name: z3
     steps:  
     - uses: actions/checkout@v2
     - name: What OS is running
@@ -36,6 +39,7 @@ jobs:
       run: g++ -std=c++14 test.cpp && ./a.out
   a38:
     runs-on: ubuntu-latest
+    name: z38
     steps:  
     - uses: actions/checkout@v2
     - name: What OS is running
@@ -46,6 +50,7 @@ jobs:
       run: g++ -std=c++14 test.cpp && ./a.out
   a4:
     runs-on: ubuntu-latest
+    name: z4
     steps:  
     - uses: actions/checkout@v2
     - name: What OS is running
@@ -56,6 +61,7 @@ jobs:
       run: g++ -std=c++14 test.cpp && ./a.out
   a5:
     runs-on: ubuntu-latest
+    name: z5
     steps:  
     - uses: actions/checkout@v2
     - name: What OS is running
@@ -66,6 +72,7 @@ jobs:
       run: g++ -std=c++14 test.cpp && ./a.out
   a6:
     runs-on: ubuntu-latest
+    name: z6
     steps:  
     - uses: actions/checkout@v2
     - name: What OS is running
@@ -76,6 +83,7 @@ jobs:
       run: g++ -std=c++14 test.cpp && ./a.out
   a7:
     runs-on: ubuntu-latest
+    name: z7
     steps:  
     - uses: actions/checkout@v2
     - name: What OS is running
@@ -86,6 +94,7 @@ jobs:
       run: g++ -std=c++14 test.cpp && ./a.out
   a8:
     runs-on: ubuntu-latest
+    name: z8
     steps:  
     - uses: actions/checkout@v2
     - name: What OS is running
@@ -96,6 +105,7 @@ jobs:
       run: g++ -std=c++14 test.cpp && ./a.out
   a9:
     runs-on: ubuntu-latest
+    name: z9
     steps:  
     - uses: actions/checkout@v2
     - name: What OS is running
@@ -106,6 +116,7 @@ jobs:
       run: g++ -std=c++14 test.cpp && ./a.out
   a10:
     runs-on: ubuntu-latest
+    name: z10
     steps:  
     - uses: actions/checkout@v2
     - name: What OS is running
@@ -116,6 +127,7 @@ jobs:
       run: g++ -std=c++14 test.cpp && ./a.out
   a11:
     runs-on: ubuntu-latest
+    name: z11
     steps:  
     - uses: actions/checkout@v2
     - name: What OS is running
@@ -126,6 +138,7 @@ jobs:
       run: g++ -std=c++14 test.cpp && ./a.out
   a12:
     runs-on: ubuntu-latest
+    name: z12
     steps:  
     - uses: actions/checkout@v2
     - name: What OS is running
@@ -136,6 +149,7 @@ jobs:
       run: g++ -std=c++14 test.cpp && ./a.out
   a13:
     runs-on: ubuntu-latest
+    name: z13
     steps:  
     - uses: actions/checkout@v2
     - name: What OS is running
@@ -146,6 +160,7 @@ jobs:
       run: g++ -std=c++14 test.cpp && ./a.out
   a14:
     runs-on: ubuntu-latest
+    name: z14
     steps:  
     - uses: actions/checkout@v2
     - name: What OS is running
@@ -156,6 +171,7 @@ jobs:
       run: g++ -std=c++14 test.cpp && ./a.out
   a15:
     runs-on: ubuntu-latest
+    name: z15
     steps:  
     - uses: actions/checkout@v2
     - name: What OS is running
@@ -166,6 +182,7 @@ jobs:
       run: g++ -std=c++14 test.cpp && ./a.out
   a16:
     runs-on: ubuntu-latest
+    name: z16
     steps:  
     - uses: actions/checkout@v2
     - name: What OS is running
@@ -176,6 +193,7 @@ jobs:
       run: g++ -std=c++14 test.cpp && ./a.out
   a17:
     runs-on: ubuntu-latest
+    name: z17
     steps:  
     - uses: actions/checkout@v2
     - name: What OS is running
@@ -186,6 +204,7 @@ jobs:
       run: g++ -std=c++14 test.cpp && ./a.out
   a18:
     runs-on: ubuntu-latest
+    name: z18
     steps:  
     - uses: actions/checkout@v2
     - name: What OS is running
@@ -196,6 +215,7 @@ jobs:
       run: g++ -std=c++14 test.cpp && ./a.out
   a19:
     runs-on: ubuntu-latest
+    name: z19
     steps:  
     - uses: actions/checkout@v2
     - name: What OS is running
@@ -206,6 +226,7 @@ jobs:
       run: g++ -std=c++14 test.cpp && ./a.out
   a20:
     runs-on: ubuntu-latest
+    name: z20
     steps:  
     - uses: actions/checkout@v2
     - name: What OS is running
