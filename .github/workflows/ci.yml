@@ -4,7 +4,207 @@ on: push
 
 jobs:
   
-  centos:
+  a1:
+    runs-on: ubuntu-latest
+    steps:  
+    - uses: actions/checkout@v2
+    - name: What OS is running
+      run: uname -a
+    - name: gcc version
+      run: g++ --version
+    - name: Build test
+      run: g++ -std=c++14 test.cpp && ./a.out
+  a2:
+    runs-on: ubuntu-latest
+    steps:  
+    - uses: actions/checkout@v2
+    - name: What OS is running
+      run: uname -a
+    - name: gcc version
+      run: g++ --version
+    - name: Build test
+      run: g++ -std=c++14 test.cpp && ./a.out
+  a3:
+    runs-on: ubuntu-latest
+    steps:  
+    - uses: actions/checkout@v2
+    - name: What OS is running
+      run: uname -a
+    - name: gcc version
+      run: g++ --version
+    - name: Build test
+      run: g++ -std=c++14 test.cpp && ./a.out
+  a3:
+    runs-on: ubuntu-latest
+    steps:  
+    - uses: actions/checkout@v2
+    - name: What OS is running
+      run: uname -a
+    - name: gcc version
+      run: g++ --version
+    - name: Build test
+      run: g++ -std=c++14 test.cpp && ./a.out
+  a4:
+    runs-on: ubuntu-latest
+    steps:  
+    - uses: actions/checkout@v2
+    - name: What OS is running
+      run: uname -a
+    - name: gcc version
+      run: g++ --version
+    - name: Build test
+      run: g++ -std=c++14 test.cpp && ./a.out
+  a5:
+    runs-on: ubuntu-latest
+    steps:  
+    - uses: actions/checkout@v2
+    - name: What OS is running
+      run: uname -a
+    - name: gcc version
+      run: g++ --version
+    - name: Build test
+      run: g++ -std=c++14 test.cpp && ./a.out
+  a6:
+    runs-on: ubuntu-latest
+    steps:  
+    - uses: actions/checkout@v2
+    - name: What OS is running
+      run: uname -a
+    - name: gcc version
+      run: g++ --version
+    - name: Build test
+      run: g++ -std=c++14 test.cpp && ./a.out
+  a7:
+    runs-on: ubuntu-latest
+    steps:  
+    - uses: actions/checkout@v2
+    - name: What OS is running
+      run: uname -a
+    - name: gcc version
+      run: g++ --version
+    - name: Build test
+      run: g++ -std=c++14 test.cpp && ./a.out
+  a8:
+    runs-on: ubuntu-latest
+    steps:  
+    - uses: actions/checkout@v2
+    - name: What OS is running
+      run: uname -a
+    - name: gcc version
+      run: g++ --version
+    - name: Build test
+      run: g++ -std=c++14 test.cpp && ./a.out
+  a9:
+    runs-on: ubuntu-latest
+    steps:  
+    - uses: actions/checkout@v2
+    - name: What OS is running
+      run: uname -a
+    - name: gcc version
+      run: g++ --version
+    - name: Build test
+      run: g++ -std=c++14 test.cpp && ./a.out
+  a10:
+    runs-on: ubuntu-latest
+    steps:  
+    - uses: actions/checkout@v2
+    - name: What OS is running
+      run: uname -a
+    - name: gcc version
+      run: g++ --version
+    - name: Build test
+      run: g++ -std=c++14 test.cpp && ./a.out
+  a11:
+    runs-on: ubuntu-latest
+    steps:  
+    - uses: actions/checkout@v2
+    - name: What OS is running
+      run: uname -a
+    - name: gcc version
+      run: g++ --version
+    - name: Build test
+      run: g++ -std=c++14 test.cpp && ./a.out
+  a12:
+    runs-on: ubuntu-latest
+    steps:  
+    - uses: actions/checkout@v2
+    - name: What OS is running
+      run: uname -a
+    - name: gcc version
+      run: g++ --version
+    - name: Build test
+      run: g++ -std=c++14 test.cpp && ./a.out
+  a13:
+    runs-on: ubuntu-latest
+    steps:  
+    - uses: actions/checkout@v2
+    - name: What OS is running
+      run: uname -a
+    - name: gcc version
+      run: g++ --version
+    - name: Build test
+      run: g++ -std=c++14 test.cpp && ./a.out
+  a14:
+    runs-on: ubuntu-latest
+    steps:  
+    - uses: actions/checkout@v2
+    - name: What OS is running
+      run: uname -a
+    - name: gcc version
+      run: g++ --version
+    - name: Build test
+      run: g++ -std=c++14 test.cpp && ./a.out
+  a15:
+    runs-on: ubuntu-latest
+    steps:  
+    - uses: actions/checkout@v2
+    - name: What OS is running
+      run: uname -a
+    - name: gcc version
+      run: g++ --version
+    - name: Build test
+      run: g++ -std=c++14 test.cpp && ./a.out
+  a16:
+    runs-on: ubuntu-latest
+    steps:  
+    - uses: actions/checkout@v2
+    - name: What OS is running
+      run: uname -a
+    - name: gcc version
+      run: g++ --version
+    - name: Build test
+      run: g++ -std=c++14 test.cpp && ./a.out
+  a17:
+    runs-on: ubuntu-latest
+    steps:  
+    - uses: actions/checkout@v2
+    - name: What OS is running
+      run: uname -a
+    - name: gcc version
+      run: g++ --version
+    - name: Build test
+      run: g++ -std=c++14 test.cpp && ./a.out
+  a18:
+    runs-on: ubuntu-latest
+    steps:  
+    - uses: actions/checkout@v2
+    - name: What OS is running
+      run: uname -a
+    - name: gcc version
+      run: g++ --version
+    - name: Build test
+      run: g++ -std=c++14 test.cpp && ./a.out
+  a19:
+    runs-on: ubuntu-latest
+    steps:  
+    - uses: actions/checkout@v2
+    - name: What OS is running
+      run: uname -a
+    - name: gcc version
+      run: g++ --version
+    - name: Build test
+      run: g++ -std=c++14 test.cpp && ./a.out
+  a20:
     runs-on: ubuntu-latest
     steps:  
     - uses: actions/checkout@v2
