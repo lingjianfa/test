@@ -34,7 +34,7 @@ jobs:
       run: g++ --version
     - name: Build test
       run: g++ -std=c++14 test.cpp && ./a.out
-  a3:
+  a38:
     runs-on: ubuntu-latest
     steps:  
     - uses: actions/checkout@v2
