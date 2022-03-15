@@ -6,7 +6,7 @@ SUITE(a)
 {
    Case(ab)
    {
-      printf("Hello Docker\n");
+      printf("Hello M1 Docker\n");
       std::cout << "Hello H2unit" << std::endl;
       OK(1, 2);
    }
